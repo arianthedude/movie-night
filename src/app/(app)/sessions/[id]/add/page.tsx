@@ -2,19 +2,12 @@
 
 import Image from "next/image";
 import { FormEvent, use, useState } from "react";
-
-type SearchHit = {
-  tmdbId: number;
-  title: string;
-  overview: string;
-  posterUrl: string | null;
-  year: string | null;
-};
+import { fetchMovieBundle, searchMovies, type TmdbSearchHit } from "@/lib/tmdb";
 
 export default function AddMoviePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<SearchHit[]>([]);
+  const [results, setResults] = useState<TmdbSearchHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -25,32 +18,38 @@ export default function AddMoviePage({ params }: { params: Promise<{ id: string 
     setLoading(true);
     setError(null);
     setMessage(null);
-    const res = await fetch(`/api/movies/search?q=${encodeURIComponent(q)}`);
-    const data = await res.json();
-    setLoading(false);
-    if (!res.ok) {
-      setError(data.error || "Search failed");
-      return;
+    try {
+      const data = await searchMovies(q);
+      setResults(data);
+    } catch {
+      setError("TMDB search failed. Check NEXT_PUBLIC_TMDB_API_KEY.");
+    } finally {
+      setLoading(false);
     }
-    setResults(data);
   }
 
   async function addMovie(tmdbId: number, title: string) {
     setAdding(tmdbId);
     setError(null);
     setMessage(null);
-    const res = await fetch(`/api/sessions/${id}/movies`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tmdbId }),
-    });
-    const data = await res.json();
-    setAdding(null);
-    if (!res.ok) {
-      setError(data.error || "Could not add movie");
-      return;
+    try {
+      const bundle = await fetchMovieBundle(tmdbId);
+      const res = await fetch(`/api/sessions/${id}/movies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bundle),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Could not add movie");
+        return;
+      }
+      setMessage(`Added “${title}” to the feed`);
+    } catch {
+      setError("Failed to fetch movie details from TMDB");
+    } finally {
+      setAdding(null);
     }
-    setMessage(`Added “${title}” to the feed`);
   }
 
   return (

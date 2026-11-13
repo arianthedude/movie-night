@@ -7,10 +7,11 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ARG NEXT_PUBLIC_TMDB_API_KEY
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV AUTH_SECRET=build-time-placeholder
 ENV DATABASE_URL=postgres://build:build@localhost:5432/build
-ENV TMDB_API_KEY=build-time-placeholder
+ENV NEXT_PUBLIC_TMDB_API_KEY=$NEXT_PUBLIC_TMDB_API_KEY
 RUN npm run build
 
 FROM node:20-alpine AS runner

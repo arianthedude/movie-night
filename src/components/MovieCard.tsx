@@ -11,6 +11,7 @@ export type FeedCastMember = {
 
 export type FeedMovie = {
   id: string;
+  tmdbId: number;
   title: string;
   overview: string;
   director: string;
@@ -20,6 +21,7 @@ export type FeedMovie = {
   backdropUrl: string | null;
   stills: (string | null)[];
   trailerUrl: string | null;
+  needsRefresh?: boolean;
 };
 
 export function MovieCard({

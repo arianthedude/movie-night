@@ -17,7 +17,10 @@ services:
       retries: 10
 
   migrate:
-    build: .
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_TMDB_API_KEY: ${NEXT_PUBLIC_TMDB_API_KEY:?NEXT_PUBLIC_TMDB_API_KEY is required}
     user: root
     working_dir: /app
     command: ["npx", "tsx", "src/db/migrate.ts"]
@@ -28,9 +31,11 @@ services:
         condition: service_healthy
     restart: "no"
 
-
   app:
-    build: .
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_TMDB_API_KEY: ${NEXT_PUBLIC_TMDB_API_KEY:?NEXT_PUBLIC_TMDB_API_KEY is required}
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3000}:3000"
@@ -38,7 +43,6 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-movienight}:${POSTGRES_PASSWORD:-movienight}@db:5432/${POSTGRES_DB:-movienight}
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
       AUTH_URL: ${AUTH_URL:-http://localhost:3000}
-      TMDB_API_KEY: ${TMDB_API_KEY:?TMDB_API_KEY is required}
     depends_on:
       db:
         condition: service_healthy

@@ -2,8 +2,10 @@ const TMDB_BASE = "https://api.themoviedb.org/3";
 const IMAGE_BASE = "https://image.tmdb.org/t/p";
 
 function apiKey() {
-  const key = process.env.TMDB_API_KEY;
-  if (!key) throw new Error("TMDB_API_KEY is not set");
+  const key = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+  if (!key) {
+    throw new Error("NEXT_PUBLIC_TMDB_API_KEY is not set");
+  }
   return key;
 }
 
@@ -21,13 +23,25 @@ export type CastMember = {
   profilePath: string | null;
 };
 
-export type TmdbSearchResult = {
-  id: number;
+export type MovieBundle = {
+  tmdbId: number;
   title: string;
   overview: string;
-  poster_path: string | null;
-  backdrop_path: string | null;
-  release_date: string;
+  director: string;
+  cast: CastMember[];
+  posterPath: string | null;
+  backdropPath: string | null;
+  stills: string[];
+  trailerKey: string | null;
+  releaseYear: number | null;
+};
+
+export type TmdbSearchHit = {
+  tmdbId: number;
+  title: string;
+  overview: string;
+  posterUrl: string | null;
+  year: string | null;
 };
 
 type CreditsResponse = {
@@ -50,7 +64,6 @@ type VideosResponse = {
     site: string;
     type: string;
     official: boolean;
-    published_at?: string;
   }[];
 };
 
@@ -63,6 +76,14 @@ type MovieDetails = {
   release_date: string;
 };
 
+type SearchResult = {
+  id: number;
+  title: string;
+  overview: string;
+  poster_path: string | null;
+  release_date: string;
+};
+
 async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): Promise<T> {
   const url = new URL(`${TMDB_BASE}${path}`);
   url.searchParams.set("api_key", apiKey());
@@ -70,20 +91,27 @@ async function tmdbFetch<T>(path: string, params: Record<string, string> = {}): 
     url.searchParams.set(k, v);
   }
 
-  const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
+  const res = await fetch(url.toString());
   if (!res.ok) {
     throw new Error(`TMDB request failed: ${res.status}`);
   }
   return res.json() as Promise<T>;
 }
 
-export async function searchMovies(query: string): Promise<TmdbSearchResult[]> {
-  const data = await tmdbFetch<{ results: TmdbSearchResult[] }>("/search/movie", {
+export async function searchMovies(query: string): Promise<TmdbSearchHit[]> {
+  const data = await tmdbFetch<{ results: SearchResult[] }>("/search/movie", {
     query,
     include_adult: "false",
     language: "en-US",
   });
-  return data.results.slice(0, 12);
+
+  return data.results.slice(0, 12).map((r) => ({
+    tmdbId: r.id,
+    title: r.title,
+    overview: r.overview,
+    posterUrl: tmdbImageUrl(r.poster_path, "w342"),
+    year: r.release_date ? r.release_date.slice(0, 4) : null,
+  }));
 }
 
 function pickTrailerKey(videos: VideosResponse["results"]): string | null {
@@ -94,7 +122,7 @@ function pickTrailerKey(videos: VideosResponse["results"]): string | null {
   return (officialTrailer ?? anyTrailer ?? teaser)?.key ?? null;
 }
 
-export async function fetchMovieBundle(tmdbId: number) {
+export async function fetchMovieBundle(tmdbId: number): Promise<MovieBundle> {
   const [details, credits, images, videos] = await Promise.all([
     tmdbFetch<MovieDetails>(`/movie/${tmdbId}`, { language: "en-US" }),
     tmdbFetch<CreditsResponse>(`/movie/${tmdbId}/credits`),

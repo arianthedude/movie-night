@@ -18,7 +18,7 @@ Self-hosted PWA for matching movies with friends. Create a session, invite peopl
 ```bash
 cp .env.example .env
 # set AUTH_SECRET (openssl rand -base64 32)
-# set TMDB_API_KEY from https://www.themoviedb.org/settings/api
+# set NEXT_PUBLIC_TMDB_API_KEY from https://www.themoviedb.org/settings/api
 ```
 
 2. Start everything:
@@ -35,7 +35,7 @@ Compose starts Postgres, runs migrations, then the app.
 
 ```bash
 cp .env.example .env
-# edit DATABASE_URL / AUTH_SECRET / TMDB_API_KEY
+# edit DATABASE_URL / AUTH_SECRET / NEXT_PUBLIC_TMDB_API_KEY
 
 docker compose up db -d
 npm install

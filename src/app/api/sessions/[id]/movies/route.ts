@@ -1,18 +1,13 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { db } from "@/db";
 import { movies, sessionMovies } from "@/db/schema";
 import { jsonError, requireUser } from "@/lib/api";
-import { needsMovieRefresh, refreshMovieFromTmdb } from "@/lib/movie-cache";
+import { movieBundleSchema } from "@/lib/movie-payload";
 import { getMembership } from "@/lib/session-access";
-import { fetchMovieBundle, tmdbImageUrl } from "@/lib/tmdb";
+import { tmdbImageUrl } from "@/lib/tmdb";
 
 type Params = { params: Promise<{ id: string }> };
-
-const addSchema = z.object({
-  tmdbId: z.number().int().positive(),
-});
 
 export async function POST(request: Request, { params }: Params) {
   const { error, user } = await requireUser();
@@ -23,39 +18,51 @@ export async function POST(request: Request, { params }: Params) {
   if (!membership) return jsonError("Not a member of this session", 403);
 
   const body = await request.json().catch(() => null);
-  const parsed = addSchema.safeParse(body);
-  if (!parsed.success) return jsonError("Invalid tmdbId");
+  const parsed = movieBundleSchema.safeParse(body);
+  if (!parsed.success) {
+    return jsonError(parsed.error.issues[0]?.message ?? "Invalid movie payload");
+  }
+
+  const bundle = parsed.data;
 
   let [movie] = await db
     .select()
     .from(movies)
-    .where(eq(movies.tmdbId, parsed.data.tmdbId))
+    .where(eq(movies.tmdbId, bundle.tmdbId))
     .limit(1);
 
-  try {
-    if (!movie) {
-      const bundle = await fetchMovieBundle(parsed.data.tmdbId);
-      [movie] = await db
-        .insert(movies)
-        .values({
-          tmdbId: bundle.tmdbId,
-          title: bundle.title,
-          overview: bundle.overview,
-          director: bundle.director,
-          castJson: bundle.cast,
-          posterPath: bundle.posterPath,
-          backdropPath: bundle.backdropPath,
-          stillsJson: bundle.stills,
-          trailerKey: bundle.trailerKey,
-          releaseYear: bundle.releaseYear,
-        })
-        .returning();
-    } else if (needsMovieRefresh(movie)) {
-      movie = await refreshMovieFromTmdb(movie.id, movie.tmdbId);
-    }
-  } catch (e) {
-    console.error(e);
-    return jsonError("Failed to fetch movie from TMDB", 502);
+  if (!movie) {
+    [movie] = await db
+      .insert(movies)
+      .values({
+        tmdbId: bundle.tmdbId,
+        title: bundle.title,
+        overview: bundle.overview,
+        director: bundle.director,
+        castJson: bundle.cast,
+        posterPath: bundle.posterPath,
+        backdropPath: bundle.backdropPath,
+        stillsJson: bundle.stills,
+        trailerKey: bundle.trailerKey,
+        releaseYear: bundle.releaseYear,
+      })
+      .returning();
+  } else {
+    [movie] = await db
+      .update(movies)
+      .set({
+        title: bundle.title,
+        overview: bundle.overview,
+        director: bundle.director,
+        castJson: bundle.cast,
+        posterPath: bundle.posterPath,
+        backdropPath: bundle.backdropPath,
+        stillsJson: bundle.stills,
+        trailerKey: bundle.trailerKey,
+        releaseYear: bundle.releaseYear,
+      })
+      .where(eq(movies.id, movie.id))
+      .returning();
   }
 
   try {

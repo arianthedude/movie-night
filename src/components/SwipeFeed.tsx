@@ -1,7 +1,31 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { fetchMovieBundle, tmdbImageUrl } from "@/lib/tmdb";
 import { FeedMovie, MovieCard } from "./MovieCard";
+
+function mapBundleToFeedMovie(id: string, bundle: Awaited<ReturnType<typeof fetchMovieBundle>>): FeedMovie {
+  return {
+    id,
+    tmdbId: bundle.tmdbId,
+    title: bundle.title,
+    overview: bundle.overview,
+    director: bundle.director,
+    cast: bundle.cast.map((c) => ({
+      name: c.name,
+      character: c.character,
+      photoUrl: tmdbImageUrl(c.profilePath, "w185"),
+    })),
+    releaseYear: bundle.releaseYear,
+    posterUrl: tmdbImageUrl(bundle.posterPath, "w500"),
+    backdropUrl: tmdbImageUrl(bundle.backdropPath, "w780"),
+    stills: bundle.stills.map((p) => tmdbImageUrl(p, "w780")).filter(Boolean),
+    trailerUrl: bundle.trailerKey
+      ? `https://www.youtube.com/watch?v=${bundle.trailerKey}`
+      : null,
+    needsRefresh: false,
+  };
+}
 
 export function SwipeFeed({ sessionId }: { sessionId: string }) {
   const [movies, setMovies] = useState<FeedMovie[]>([]);
@@ -13,9 +37,28 @@ export function SwipeFeed({ sessionId }: { sessionId: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch(`/api/sessions/${sessionId}/feed`);
-    const data = await res.json();
-    setMovies(Array.isArray(data) ? data : []);
+    const data = (await res.json()) as FeedMovie[];
+    const list = Array.isArray(data) ? data : [];
+    setMovies(list);
     setLoading(false);
+
+    const stale = list.filter((m) => m.needsRefresh).slice(0, 5);
+    await Promise.all(
+      stale.map(async (m) => {
+        try {
+          const bundle = await fetchMovieBundle(m.tmdbId);
+          await fetch(`/api/movies/${m.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(bundle),
+          });
+          const updated = mapBundleToFeedMovie(m.id, bundle);
+          setMovies((prev) => prev.map((row) => (row.id === m.id ? updated : row)));
+        } catch (e) {
+          console.error(`Failed to refresh movie ${m.tmdbId}`, e);
+        }
+      }),
+    );
   }, [sessionId]);
 
   useEffect(() => {
