@@ -9,11 +9,17 @@ function apiKey() {
 
 export function tmdbImageUrl(
   path: string | null | undefined,
-  size: "w342" | "w500" | "w780" | "original" = "w500",
+  size: "w185" | "w342" | "w500" | "w780" | "original" = "w500",
 ) {
   if (!path) return null;
   return `${IMAGE_BASE}/${size}${path}`;
 }
+
+export type CastMember = {
+  name: string;
+  character: string;
+  profilePath: string | null;
+};
 
 export type TmdbSearchResult = {
   id: number;
@@ -25,12 +31,27 @@ export type TmdbSearchResult = {
 };
 
 type CreditsResponse = {
-  cast: { name: string; order: number }[];
+  cast: {
+    name: string;
+    character: string;
+    profile_path: string | null;
+    order: number;
+  }[];
   crew: { name: string; job: string }[];
 };
 
 type ImagesResponse = {
   backdrops: { file_path: string; vote_average: number }[];
+};
+
+type VideosResponse = {
+  results: {
+    key: string;
+    site: string;
+    type: string;
+    official: boolean;
+    published_at?: string;
+  }[];
 };
 
 type MovieDetails = {
@@ -65,19 +86,31 @@ export async function searchMovies(query: string): Promise<TmdbSearchResult[]> {
   return data.results.slice(0, 12);
 }
 
+function pickTrailerKey(videos: VideosResponse["results"]): string | null {
+  const youtube = videos.filter((v) => v.site === "YouTube");
+  const officialTrailer = youtube.find((v) => v.type === "Trailer" && v.official);
+  const anyTrailer = youtube.find((v) => v.type === "Trailer");
+  const teaser = youtube.find((v) => v.type === "Teaser");
+  return (officialTrailer ?? anyTrailer ?? teaser)?.key ?? null;
+}
+
 export async function fetchMovieBundle(tmdbId: number) {
-  const [details, credits, images] = await Promise.all([
+  const [details, credits, images, videos] = await Promise.all([
     tmdbFetch<MovieDetails>(`/movie/${tmdbId}`, { language: "en-US" }),
     tmdbFetch<CreditsResponse>(`/movie/${tmdbId}/credits`),
     tmdbFetch<ImagesResponse>(`/movie/${tmdbId}/images`),
+    tmdbFetch<VideosResponse>(`/movie/${tmdbId}/videos`, { language: "en-US" }),
   ]);
 
-  const director =
-    credits.crew.find((c) => c.job === "Director")?.name ?? "";
-  const cast = credits.cast
+  const director = credits.crew.find((c) => c.job === "Director")?.name ?? "";
+  const cast: CastMember[] = credits.cast
     .sort((a, b) => a.order - b.order)
-    .slice(0, 8)
-    .map((c) => c.name);
+    .slice(0, 5)
+    .map((c) => ({
+      name: c.name,
+      character: c.character ?? "",
+      profilePath: c.profile_path,
+    }));
 
   const stills = images.backdrops
     .sort((a, b) => b.vote_average - a.vote_average)
@@ -97,6 +130,7 @@ export async function fetchMovieBundle(tmdbId: number) {
     posterPath: details.poster_path,
     backdropPath: details.backdrop_path,
     stills,
+    trailerKey: pickTrailerKey(videos.results),
     releaseYear: year,
   };
 }

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { movies, sessionMovies } from "@/db/schema";
 import { jsonError, requireUser } from "@/lib/api";
+import { needsMovieRefresh, refreshMovieFromTmdb } from "@/lib/movie-cache";
 import { getMembership } from "@/lib/session-access";
 import { fetchMovieBundle, tmdbImageUrl } from "@/lib/tmdb";
 
@@ -31,8 +32,8 @@ export async function POST(request: Request, { params }: Params) {
     .where(eq(movies.tmdbId, parsed.data.tmdbId))
     .limit(1);
 
-  if (!movie) {
-    try {
+  try {
+    if (!movie) {
       const bundle = await fetchMovieBundle(parsed.data.tmdbId);
       [movie] = await db
         .insert(movies)
@@ -45,13 +46,16 @@ export async function POST(request: Request, { params }: Params) {
           posterPath: bundle.posterPath,
           backdropPath: bundle.backdropPath,
           stillsJson: bundle.stills,
+          trailerKey: bundle.trailerKey,
           releaseYear: bundle.releaseYear,
         })
         .returning();
-    } catch (e) {
-      console.error(e);
-      return jsonError("Failed to fetch movie from TMDB", 502);
+    } else if (needsMovieRefresh(movie)) {
+      movie = await refreshMovieFromTmdb(movie.id, movie.tmdbId);
     }
+  } catch (e) {
+    console.error(e);
+    return jsonError("Failed to fetch movie from TMDB", 502);
   }
 
   try {

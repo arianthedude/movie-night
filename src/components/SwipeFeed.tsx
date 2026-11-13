@@ -71,7 +71,7 @@ export function SwipeFeed({ sessionId }: { sessionId: string }) {
         </div>
       ) : null}
 
-      <MovieCard movie={current} animClass={anim} />
+      <MovieCard key={current.id} movie={current} animClass={anim} />
 
       <div className="flex gap-3">
         <button

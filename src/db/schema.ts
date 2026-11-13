@@ -48,19 +48,27 @@ export const sessionMembers = pgTable(
   ],
 );
 
+export type CastMemberJson = {
+  name: string;
+  character: string;
+  profilePath: string | null;
+};
+
 export const movies = pgTable("movies", {
   id: uuid("id").defaultRandom().primaryKey(),
   tmdbId: integer("tmdb_id").notNull().unique(),
   title: varchar("title", { length: 512 }).notNull(),
   overview: text("overview").notNull().default(""),
   director: varchar("director", { length: 256 }).notNull().default(""),
-  castJson: jsonb("cast_json").$type<string[]>().notNull().default([]),
+  castJson: jsonb("cast_json").$type<CastMemberJson[]>().notNull().default([]),
   posterPath: text("poster_path"),
   backdropPath: text("backdrop_path"),
   stillsJson: jsonb("stills_json").$type<string[]>().notNull().default([]),
+  trailerKey: text("trailer_key"),
   releaseYear: integer("release_year"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
 
 export const sessionMovies = pgTable(
   "session_movies",

@@ -3,16 +3,23 @@
 import Image from "next/image";
 import { useState } from "react";
 
+export type FeedCastMember = {
+  name: string;
+  character: string;
+  photoUrl: string | null;
+};
+
 export type FeedMovie = {
   id: string;
   title: string;
   overview: string;
   director: string;
-  cast: string[];
+  cast: FeedCastMember[];
   releaseYear: number | null;
   posterUrl: string | null;
   backdropUrl: string | null;
   stills: (string | null)[];
+  trailerUrl: string | null;
 };
 
 export function MovieCard({
@@ -46,6 +53,16 @@ export function MovieCard({
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-panel via-transparent to-transparent" />
+        {movie.trailerUrl ? (
+          <a
+            href={movie.trailerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute bottom-3 right-3 rounded-full bg-ink/80 px-3 py-1.5 text-xs font-semibold text-cream backdrop-blur hover:bg-amber hover:text-ink"
+          >
+            Watch trailer
+          </a>
+        ) : null}
       </div>
 
       <div className="space-y-3 p-5">
@@ -64,10 +81,33 @@ export function MovieCard({
         </div>
 
         {movie.cast.length > 0 ? (
-          <p className="text-sm text-cream-dim">
-            <span className="text-cream/80">Cast: </span>
-            {movie.cast.join(", ")}
-          </p>
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {movie.cast.map((person) => (
+              <div key={person.name} className="w-16 shrink-0 text-center">
+                <div className="relative mx-auto h-16 w-16 overflow-hidden rounded-full border border-line bg-ink-soft">
+                  {person.photoUrl ? (
+                    <Image
+                      src={person.photoUrl}
+                      alt={person.name}
+                      fill
+                      className="object-cover"
+                      sizes="64px"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-cream-dim">
+                      {person.name.slice(0, 1)}
+                    </div>
+                  )}
+                </div>
+                <p className="mt-1.5 truncate text-[11px] font-medium text-cream">
+                  {person.name}
+                </p>
+                {person.character ? (
+                  <p className="truncate text-[10px] text-cream-dim">{person.character}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
         ) : null}
 
         {movie.overview ? (
