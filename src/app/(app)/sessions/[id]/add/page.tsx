@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { FormEvent, use, useState } from "react";
+import { TmdbImage } from "@/components/TmdbImage";
 import { fetchMovieBundle, searchMovies, type TmdbSearchHit } from "@/lib/tmdb";
 
 export default function AddMoviePage({ params }: { params: Promise<{ id: string }> }) {
@@ -89,9 +89,7 @@ export default function AddMoviePage({ params }: { params: Promise<{ id: string 
             className="flex gap-3 rounded-2xl border border-line bg-panel/60 p-3"
           >
             <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-ink-soft">
-              {r.posterUrl ? (
-                <Image src={r.posterUrl} alt="" fill className="object-cover" sizes="56px" />
-              ) : null}
+              <TmdbImage src={r.posterUrl} className="h-full w-full object-cover" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="font-medium text-cream">

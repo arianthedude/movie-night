@@ -1,14 +1,24 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
 const publicPaths = ["/login", "/register"];
 
-export async function middleware(request: NextRequest) {
+/** Auth.js / next-auth session cookie names (dev + secure prod). */
+function hasSessionCookie(request: NextRequest) {
+  return Boolean(
+    request.cookies.get("authjs.session-token")?.value ||
+      request.cookies.get("__Secure-authjs.session-token")?.value ||
+      request.cookies.get("next-auth.session-token")?.value ||
+      request.cookies.get("__Secure-next-auth.session-token")?.value,
+  );
+}
+
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/tmdb-image") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/icons") ||
     pathname === "/manifest.webmanifest" ||
@@ -18,23 +28,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET,
-  });
+  // Cookie presence check only — avoids next-auth/jwt (Edge + CompressionStream warning).
+  const loggedIn = hasSessionCookie(request);
 
   const isPublic = publicPaths.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
 
-  if (!token && !isPublic) {
+  if (!loggedIn && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(url);
   }
 
-  if (token && isPublic) {
+  if (loggedIn && isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);

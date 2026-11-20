@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { use, useEffect, useState } from "react";
+import { TmdbImage } from "@/components/TmdbImage";
 
 type MatchRow = {
   id: string;
@@ -47,9 +47,7 @@ export default function MatchedPage({ params }: { params: Promise<{ id: string }
           className="flex gap-3 rounded-2xl border border-sage/30 bg-panel/70 p-3"
         >
           <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-lg bg-ink-soft">
-            {m.posterUrl ? (
-              <Image src={m.posterUrl} alt="" fill className="object-cover" sizes="64px" />
-            ) : null}
+            <TmdbImage src={m.posterUrl} className="h-full w-full object-cover" />
           </div>
           <div>
             <p className="font-display text-lg text-cream">{m.title}</p>

@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { use, useEffect, useState } from "react";
+import { TmdbImage } from "@/components/TmdbImage";
 
 type RankedRow = {
   id: string;
@@ -46,9 +46,7 @@ export default function RankedPage({ params }: { params: Promise<{ id: string }>
         >
           <span className="w-7 text-center font-display text-xl text-amber">{index + 1}</span>
           <div className="relative h-16 w-11 shrink-0 overflow-hidden rounded-md bg-ink-soft">
-            {m.posterUrl ? (
-              <Image src={m.posterUrl} alt="" fill className="object-cover" sizes="44px" />
-            ) : null}
+            <TmdbImage src={m.posterUrl} className="h-full w-full object-cover" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate font-medium text-cream">{m.title}</p>

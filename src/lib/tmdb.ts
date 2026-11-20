@@ -1,5 +1,4 @@
 const TMDB_BASE = "https://api.themoviedb.org/3";
-const IMAGE_BASE = "https://image.tmdb.org/t/p";
 
 function apiKey() {
   const key = process.env.NEXT_PUBLIC_TMDB_API_KEY;
@@ -14,7 +13,9 @@ export function tmdbImageUrl(
   size: "w185" | "w342" | "w500" | "w780" | "original" = "w500",
 ) {
   if (!path) return null;
-  return `${IMAGE_BASE}/${size}${path}`;
+  // Same-origin proxy — image.tmdb.org is often DNS-blocked in the browser.
+  const params = new URLSearchParams({ path, size });
+  return `/api/tmdb-image?${params.toString()}`;
 }
 
 export type CastMember = {

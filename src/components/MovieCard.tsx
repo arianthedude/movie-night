@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
+import { TmdbImage } from "./TmdbImage";
 
 export type FeedCastMember = {
   name: string;
@@ -41,14 +41,7 @@ export function MovieCard({
     >
       <div className="relative aspect-[16/10] bg-ink-soft">
         {hero ? (
-          <Image
-            src={hero}
-            alt={movie.title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 480px) 100vw, 480px"
-            priority
-          />
+          <TmdbImage src={hero} alt={movie.title} className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <div className="flex h-full items-center justify-center text-cream-dim">
             No image
@@ -88,12 +81,10 @@ export function MovieCard({
               <div key={person.name} className="w-16 shrink-0 text-center">
                 <div className="relative mx-auto h-16 w-16 overflow-hidden rounded-full border border-line bg-ink-soft">
                   {person.photoUrl ? (
-                    <Image
+                    <TmdbImage
                       src={person.photoUrl}
                       alt={person.name}
-                      fill
-                      className="object-cover"
-                      sizes="64px"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center text-xs text-cream-dim">
@@ -129,7 +120,7 @@ export function MovieCard({
                   i === stillIndex ? "border-amber" : "border-line"
                 }`}
               >
-                <Image src={src} alt="" fill className="object-cover" sizes="96px" />
+                <TmdbImage src={src} className="h-full w-full object-cover" />
               </button>
             ))}
           </div>
